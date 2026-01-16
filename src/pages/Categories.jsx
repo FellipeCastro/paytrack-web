@@ -234,15 +234,13 @@ const Categories = () => {
                                     </div>
 
                                     <div className="flex items-center space-x-2 mt-6">
-                                        <button
-                                            onClick={() =>
-                                                handleEditClick(category)
-                                            }
+                                        <Link
+                                            to={`/categories/${category.id}/edit`}
                                             className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 font-medium rounded-lg hover:bg-blue-100 transition-colors"
                                         >
                                             <FaEdit className="w-4 h-4" />
                                             <span>Editar</span>
-                                        </button>
+                                        </Link>
                                         <button
                                             onClick={() =>
                                                 handleDeleteClick(category)

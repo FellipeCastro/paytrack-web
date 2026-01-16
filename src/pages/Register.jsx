@@ -11,7 +11,7 @@ import {
 } from "react-icons/fa";
 import api from "../config/api.js";
 
-const Register = ({ loadData }) => {
+const Register = () => {
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -106,7 +106,6 @@ const Register = ({ loadData }) => {
 
             // Redireciona para dashboard após 2 segundos
             setTimeout(() => {
-                if (loadData) loadData();
                 navigate("/dashboard");
             }, 2000);
         } catch (error) {

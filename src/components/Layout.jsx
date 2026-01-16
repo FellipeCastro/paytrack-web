@@ -44,7 +44,7 @@ const Layout = ({ children }) => {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <div className="min-h-screen bg-linear-to-b from-gray-50 to-white">
             {/* Header/Navbar */}
             <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-gray-100">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -67,7 +67,7 @@ const Layout = ({ children }) => {
                                 to="/dashboard"
                                 className="flex items-center space-x-2"
                             >
-                                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                                <div className="w-10 h-10 bg-linear-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                                     <span className="text-white font-bold text-xl">
                                         PT
                                     </span>
@@ -111,7 +111,7 @@ const Layout = ({ children }) => {
                                     }
                                     className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
                                 >
-                                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                                    <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
                                         <FaUser className="w-4 h-4 text-white" />
                                     </div>
                                     <span className="hidden md:inline text-sm font-medium">
@@ -188,7 +188,7 @@ const Layout = ({ children }) => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                         <div>
                             <div className="flex items-center space-x-2 mb-6">
-                                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                                <div className="w-10 h-10 bg-linear-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
                                     <span className="text-white font-bold text-xl">
                                         PT
                                     </span>

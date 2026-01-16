@@ -7,12 +7,11 @@ import Subscriptions from "./pages/Subscriptions";
 import Categories from "./pages/Categories";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
+import SubscriptionForm from "./pages/SubscriptionForm";
+import CategoryForm from "./pages/CategoryForm";
+import ChargeForm from "./pages/ChargeForm";
 
 const App = () => {
-    const loadData = () => {
-        console.log("Dados carregados!");
-    };
-
     // Componente de rota protegida
     const ProtectedRoute = ({ children }) => {
         const token = localStorage.getItem("authToken");
@@ -46,7 +45,7 @@ const App = () => {
                     path="/login"
                     element={
                         <GuestRoute>
-                            <Login loadData={loadData} />
+                            <Login />
                         </GuestRoute>
                     }
                 />
@@ -55,7 +54,7 @@ const App = () => {
                     path="/register"
                     element={
                         <GuestRoute>
-                            <Register loadData={loadData} />
+                            <Register />
                         </GuestRoute>
                     }
                 />
@@ -101,6 +100,51 @@ const App = () => {
                     element={
                         <ProtectedRoute>
                             <Profile />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/subscriptions/new"
+                    element={
+                        <ProtectedRoute>
+                            <SubscriptionForm />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/subscriptions/:id/edit"
+                    element={
+                        <ProtectedRoute>
+                            <SubscriptionForm />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/subscriptions/:id/charge"
+                    element={
+                        <ProtectedRoute>
+                            <ChargeForm />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/categories/new"
+                    element={
+                        <ProtectedRoute>
+                            <CategoryForm />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/categories/:id/edit"
+                    element={
+                        <ProtectedRoute>
+                            <CategoryForm />
                         </ProtectedRoute>
                     }
                 />

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     FaPlus,
-    FaFilter,
     FaSearch,
     FaCalendarAlt,
     FaEdit,
@@ -537,6 +536,16 @@ const Subscriptions = () => {
                                                             >
                                                                 <FaEdit />
                                                             </Link>
+                                                            {subscription.status ===
+                                                                "active" && (
+                                                                <Link
+                                                                    to={`/subscriptions/${subscription.id}/charge`}
+                                                                    className="text-green-600 hover:text-green-800"
+                                                                    title="Registrar cobrança"
+                                                                >
+                                                                    <FaCheckCircle />
+                                                                </Link>
+                                                            )}
                                                             {subscription.status ===
                                                                 "active" && (
                                                                 <button

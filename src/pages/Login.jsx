@@ -9,7 +9,7 @@ import {
 } from "react-icons/fa";
 import api from "../config/api.js";
 
-const Login = ({ loadData }) => {
+const Login = () => {
     const [credentials, setCredentials] = useState({
         email: "",
         password: "",
@@ -83,7 +83,6 @@ const Login = ({ loadData }) => {
                 localStorage.setItem("rememberedEmail", credentials.email);
             }
 
-            if (loadData) await loadData();
             navigate("/dashboard");
         } catch (error) {
             const errorMessage =
