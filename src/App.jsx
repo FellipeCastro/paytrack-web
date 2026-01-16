@@ -2,12 +2,17 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Subscriptions from "./pages/Subscriptions";
+import Categories from "./pages/Categories";
+import Reports from "./pages/Reports";
+import Profile from "./pages/Profile";
 
 const App = () => {
     const loadData = () => {
         console.log("Dados carregados!");
-    }
-    
+    };
+
     // Componente de rota protegida
     const ProtectedRoute = ({ children }) => {
         const token = localStorage.getItem("authToken");
@@ -28,7 +33,7 @@ const App = () => {
                     path="/"
                     element={
                         localStorage.getItem("authToken") ? (
-                            <Navigate to="/home" replace />
+                            <Navigate to="/dashboard" replace />
                         ) : (
                             <GuestRoute>
                                 <LandingPage />
@@ -51,14 +56,52 @@ const App = () => {
                     element={
                         <GuestRoute>
                             <Register loadData={loadData} />
-                        </GuestRoute> 
+                        </GuestRoute>
                     }
                 />
 
-                <Route 
+                <Route
                     path="/dashboard"
                     element={
-                        <h1>Ola mundo</h1>
+                        <ProtectedRoute>
+                            <Dashboard />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/subscriptions"
+                    element={
+                        <ProtectedRoute>
+                            <Subscriptions />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/categories"
+                    element={
+                        <ProtectedRoute>
+                            <Categories />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/reports"
+                    element={
+                        <ProtectedRoute>
+                            <Reports />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/users/profile"
+                    element={
+                        <ProtectedRoute>
+                            <Profile />
+                        </ProtectedRoute>
                     }
                 />
             </Routes>
