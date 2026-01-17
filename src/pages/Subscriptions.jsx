@@ -529,13 +529,6 @@ const Subscriptions = () => {
                                                     </td>
                                                     <td className="py-4 px-6">
                                                         <div className="flex items-center space-x-2">
-                                                            <Link
-                                                                to={`/subscriptions/${subscription.id}/edit`}
-                                                                className="text-blue-600 hover:text-blue-800"
-                                                                title="Editar"
-                                                            >
-                                                                <FaEdit />
-                                                            </Link>
                                                             {subscription.status ===
                                                                 "active" && (
                                                                 <Link

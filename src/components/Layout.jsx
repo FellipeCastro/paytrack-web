@@ -131,19 +131,9 @@ const Layout = ({ children }) => {
                                             <FaUser className="mr-2" />
                                             Perfil
                                         </Link>
-                                        <Link
-                                            to="/users/settings"
-                                            className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50"
-                                            onClick={() =>
-                                                setUserMenuOpen(false)
-                                            }
-                                        >
-                                            <FaCog className="mr-2" />
-                                            Configurações
-                                        </Link>
                                         <button
                                             onClick={handleLogout}
-                                            className="flex items-center w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
+                                            className="cursor-pointer flex items-center w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
                                         >
                                             <FaSignOutAlt className="mr-2" />
                                             Sair
@@ -244,7 +234,7 @@ const Layout = ({ children }) => {
                                 </li>
                                 <li>
                                     <Link
-                                        to="/users/settings"
+                                        to="/users/profile"
                                         className="text-gray-400 hover:text-white transition-colors"
                                     >
                                         Preferências

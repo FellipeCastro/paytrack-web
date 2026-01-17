@@ -10,6 +10,7 @@ import Profile from "./pages/Profile";
 import SubscriptionForm from "./pages/SubscriptionForm";
 import CategoryForm from "./pages/CategoryForm";
 import ChargeForm from "./pages/ChargeForm";
+import Alerts from "./pages/Alerts";
 
 const App = () => {
     // Componente de rota protegida
@@ -145,6 +146,15 @@ const App = () => {
                     element={
                         <ProtectedRoute>
                             <CategoryForm />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route 
+                    path="/alerts"
+                    element={
+                        <ProtectedRoute>
+                            <Alerts />
                         </ProtectedRoute>
                     }
                 />

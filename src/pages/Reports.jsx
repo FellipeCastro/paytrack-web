@@ -19,6 +19,8 @@ const Reports = () => {
         annualProjection: 0,
         topSubscriptions: [],
         spendingTrend: [],
+        totalSpent: 0,
+        categoriesCount: 0,
     });
     const [isLoading, setIsLoading] = useState(true);
     const [dateRange, setDateRange] = useState({
@@ -28,16 +30,26 @@ const Reports = () => {
         end: new Date().toISOString().split("T")[0], // Hoje
     });
     const [reportType, setReportType] = useState("monthly");
+    const [categories, setCategories] = useState([]);
 
     useEffect(() => {
         fetchReportData();
+        fetchCategories();
     }, [dateRange, reportType]);
+
+    const fetchCategories = async () => {
+        try {
+            const response = await api.get("/categories");
+            setCategories(response.data || []);
+        } catch (error) {
+            console.error("Erro ao carregar categorias:", error);
+            setCategories([]);
+        }
+    };
 
     const fetchReportData = async () => {
         setIsLoading(true);
         try {
-            // Em um sistema real, você teria endpoints específicos para relatórios
-            // Aqui estou simulando os dados
             const params = new URLSearchParams();
             if (dateRange.start)
                 params.append("initial_period", dateRange.start);
@@ -51,66 +63,238 @@ const Reports = () => {
 
             const subscriptions = subscriptionsResponse.data || [];
             const charges = chargesResponse.data || [];
+            const categoriesData = categories;
 
             // Processar dados para os relatórios
-            const processedData = processReportData(subscriptions, charges);
+            const processedData = processReportData(
+                subscriptions,
+                charges,
+                categoriesData,
+            );
             setReportData(processedData);
         } catch (error) {
             console.error("Erro ao carregar dados do relatório:", error);
-            // Dados de exemplo para desenvolvimento
-            setReportData(getMockReportData());
+            // Em caso de erro, mostrar dados vazios
+            setReportData({
+                monthlySpending: [],
+                categoryDistribution: [],
+                annualProjection: 0,
+                topSubscriptions: [],
+                spendingTrend: [],
+                totalSpent: 0,
+                categoriesCount: 0,
+            });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const processReportData = (subscriptions, charges) => {
-        // Implementar lógica de processamento de dados aqui
-        // Esta é uma implementação simplificada
-        return getMockReportData();
+    const processReportData = (subscriptions, charges, categories) => {
+        // Calcular gastos mensais (últimos 12 meses)
+        const monthlySpending = calculateMonthlySpending(charges);
+
+        // Calcular distribuição por categoria
+        const categoryDistribution = calculateCategoryDistribution(
+            subscriptions,
+            categories,
+        );
+
+        // Calcular projeção anual (baseado nas assinaturas ativas)
+        const annualProjection = calculateAnnualProjection(subscriptions);
+
+        // Encontrar as principais assinaturas (maiores valores)
+        const topSubscriptions = getTopSubscriptions(subscriptions);
+
+        // Calcular tendência de gastos
+        const spendingTrend = calculateSpendingTrend(charges, subscriptions);
+
+        // Calcular total gasto no período
+        const totalSpent = charges.reduce(
+            (sum, charge) => sum + charge.amount,
+            0,
+        );
+
+        // Contar categorias ativas (com assinaturas)
+        const activeCategories = new Set(
+            subscriptions.map((sub) => sub.category_id),
+        ).size;
+
+        return {
+            monthlySpending,
+            categoryDistribution,
+            annualProjection,
+            topSubscriptions,
+            spendingTrend,
+            totalSpent,
+            categoriesCount: activeCategories,
+        };
     };
 
-    const getMockReportData = () => {
-        return {
-            monthlySpending: [
-                { month: "Jan", amount: 289.9 },
-                { month: "Fev", amount: 310.5 },
-                { month: "Mar", amount: 295.8 },
-                { month: "Abr", amount: 302.4 },
-                { month: "Mai", amount: 289.9 },
-                { month: "Jun", amount: 315.2 },
-                { month: "Jul", amount: 328.6 },
-                { month: "Ago", amount: 335.1 },
-                { month: "Set", amount: 342.8 },
-                { month: "Out", amount: 350.5 },
-                { month: "Nov", amount: 358.3 },
-                { month: "Dez", amount: 366.2 },
-            ],
-            categoryDistribution: [
-                { name: "Entretenimento", value: 35, amount: 105.0 },
-                { name: "Trabalho", value: 25, amount: 75.0 },
-                { name: "Música", value: 15, amount: 45.0 },
-                { name: "Armazenamento", value: 10, amount: 30.0 },
-                { name: "Saúde", value: 15, amount: 45.0 },
-            ],
-            annualProjection: 3987.6,
-            topSubscriptions: [
-                { name: "Adobe Creative Cloud", amount: 79.9, trend: "up" },
-                { name: "Gym", amount: 89.9, trend: "stable" },
-                { name: "Netflix", amount: 34.9, trend: "stable" },
-                { name: "Microsoft 365", amount: 39.9, trend: "down" },
-                { name: "Spotify", amount: 19.9, trend: "stable" },
-            ],
-            spendingTrend: [
-                { month: "Jan", actual: 289.9, average: 275.0 },
-                { month: "Fev", actual: 310.5, average: 285.0 },
-                { month: "Mar", actual: 295.8, average: 290.0 },
-                { month: "Abr", actual: 302.4, average: 295.0 },
-                { month: "Mai", actual: 289.9, average: 300.0 },
-                { month: "Jun", actual: 315.2, average: 305.0 },
-                { month: "Jul", actual: 328.6, average: 310.0 },
-            ],
-        };
+    const calculateMonthlySpending = (charges) => {
+        const months = [];
+        const today = new Date();
+
+        // Criar array dos últimos 12 meses
+        for (let i = 11; i >= 0; i--) {
+            const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const monthName = date.toLocaleDateString("pt-BR", {
+                month: "short",
+            });
+            const monthYear = date.getMonth();
+            const year = date.getFullYear();
+
+            // Filtrar cobranças deste mês
+            const monthCharges = charges.filter((charge) => {
+                const chargeDate = new Date(charge.charge_date);
+                return (
+                    chargeDate.getMonth() === monthYear &&
+                    chargeDate.getFullYear() === year &&
+                    charge.status === "paid"
+                );
+            });
+
+            const totalAmount = monthCharges.reduce(
+                (sum, charge) => sum + charge.amount,
+                0,
+            );
+
+            months.push({
+                month: monthName.charAt(0).toUpperCase() + monthName.slice(1),
+                amount: totalAmount,
+            });
+        }
+
+        return months;
+    };
+
+    const calculateCategoryDistribution = (subscriptions, categories) => {
+        const distribution = [];
+        const totalMonthly = subscriptions.reduce((sum, sub) => {
+            const monthlyAmount =
+                sub.billing_cycle === "yearly" ? sub.amount / 12 : sub.amount;
+            return sum + monthlyAmount;
+        }, 0);
+
+        if (totalMonthly === 0) return [];
+
+        // Agrupar por categoria
+        const categoryTotals = {};
+        subscriptions.forEach((sub) => {
+            const monthlyAmount =
+                sub.billing_cycle === "yearly" ? sub.amount / 12 : sub.amount;
+            const categoryName =
+                categories.find((cat) => cat.id === sub.category_id)?.name ||
+                "Sem categoria";
+
+            if (!categoryTotals[categoryName]) {
+                categoryTotals[categoryName] = 0;
+            }
+            categoryTotals[categoryName] += monthlyAmount;
+        });
+
+        // Converter para array e calcular porcentagens
+        Object.entries(categoryTotals).forEach(([name, amount], index) => {
+            const percentage = (amount / totalMonthly) * 100;
+            distribution.push({
+                name,
+                value: Math.round(percentage),
+                amount: amount,
+            });
+        });
+
+        // Ordenar por valor (maior primeiro)
+        return distribution.sort((a, b) => b.amount - a.amount);
+    };
+
+    const calculateAnnualProjection = (subscriptions) => {
+        const activeSubscriptions = subscriptions.filter(
+            (sub) => sub.status === "active",
+        );
+        const totalMonthly = activeSubscriptions.reduce((sum, sub) => {
+            const monthlyAmount =
+                sub.billing_cycle === "yearly" ? sub.amount / 12 : sub.amount;
+            return sum + monthlyAmount;
+        }, 0);
+
+        return totalMonthly * 12;
+    };
+
+    const getTopSubscriptions = (subscriptions) => {
+        // Converter para valor mensal e ordenar
+        const subscriptionsWithMonthly = subscriptions
+            .map((sub) => ({
+                ...sub,
+                monthlyAmount:
+                    sub.billing_cycle === "yearly"
+                        ? sub.amount / 12
+                        : sub.amount,
+            }))
+            .filter((sub) => sub.status === "active")
+            .sort((a, b) => b.monthlyAmount - a.monthlyAmount)
+            .slice(0, 5); // Top 5
+
+        return subscriptionsWithMonthly.map((sub) => ({
+            name: sub.service_name,
+            amount: sub.monthlyAmount,
+            trend: getSubscriptionTrend(sub), // Você pode implementar uma lógica real de tendência
+        }));
+    };
+
+    const getSubscriptionTrend = (subscription) => {
+        // Esta é uma implementação simples
+        // Em um sistema real, você compararia com dados históricos
+        const trends = ["up", "stable", "down"];
+        return trends[Math.floor(Math.random() * trends.length)];
+    };
+
+    const calculateSpendingTrend = (charges, subscriptions) => {
+        const trends = [];
+        const today = new Date();
+
+        // Últimos 6 meses
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const monthName = date.toLocaleDateString("pt-BR", {
+                month: "short",
+            });
+            const monthYear = date.getMonth();
+            const year = date.getFullYear();
+
+            // Cobranças deste mês
+            const monthCharges = charges.filter((charge) => {
+                const chargeDate = new Date(charge.charge_date);
+                return (
+                    chargeDate.getMonth() === monthYear &&
+                    chargeDate.getFullYear() === year &&
+                    charge.status === "paid"
+                );
+            });
+
+            const actual = monthCharges.reduce(
+                (sum, charge) => sum + charge.amount,
+                0,
+            );
+
+            // Calcular média (simplificado - média das assinaturas ativas naquele mês)
+            const average = subscriptions.reduce((sum, sub) => {
+                if (sub.status === "active") {
+                    const monthlyAmount =
+                        sub.billing_cycle === "yearly"
+                            ? sub.amount / 12
+                            : sub.amount;
+                    return sum + monthlyAmount;
+                }
+                return sum;
+            }, 0);
+
+            trends.push({
+                month: monthName.charAt(0).toUpperCase() + monthName.slice(1),
+                actual: actual,
+                average: average,
+            });
+        }
+
+        return trends;
     };
 
     const formatCurrency = (value) => {
@@ -124,6 +308,42 @@ const Reports = () => {
         // Implementar exportação em diferentes formatos
         alert(`Exportando relatório em formato ${format}...`);
     };
+
+    const handleApplyFilters = () => {
+        fetchReportData();
+    };
+
+    const getMonthNames = () => {
+        return [
+            "Jan",
+            "Fev",
+            "Mar",
+            "Abr",
+            "Mai",
+            "Jun",
+            "Jul",
+            "Ago",
+            "Set",
+            "Out",
+            "Nov",
+            "Dez",
+        ];
+    };
+
+    // Encontrar o valor máximo para normalizar os gráficos
+    const maxMonthlyAmount =
+        reportData.monthlySpending.length > 0
+            ? Math.max(...reportData.monthlySpending.map((item) => item.amount))
+            : 1;
+
+    const maxTrendAmount =
+        reportData.spendingTrend.length > 0
+            ? Math.max(
+                  ...reportData.spendingTrend.map((item) =>
+                      Math.max(item.actual, item.average),
+                  ),
+              )
+            : 1;
 
     return (
         <Layout>
@@ -140,7 +360,7 @@ const Reports = () => {
                     </div>
 
                     <div className="flex items-center space-x-4 mt-4 md:mt-0">
-                        <div className="relative">
+                        <div className="relative group">
                             <button className="flex items-center space-x-2 px-4 py-2 bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-md">
                                 <FaDownload className="w-4 h-4" />
                                 <span>Exportar</span>
@@ -231,305 +451,344 @@ const Reports = () => {
 
                     <div className="flex justify-end mt-4">
                         <button
-                            onClick={fetchReportData}
-                            className="flex items-center space-x-2 px-4 py-2 bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all"
+                            onClick={handleApplyFilters}
+                            disabled={isLoading}
+                            className="flex items-center space-x-2 px-4 py-2 bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <FaFilter className="w-4 h-4" />
-                            <span>Aplicar Filtros</span>
+                            <span>
+                                {isLoading
+                                    ? "Carregando..."
+                                    : "Aplicar Filtros"}
+                            </span>
                         </button>
                     </div>
                 </div>
 
-                {/* Cards de Resumo */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-blue-50 rounded-xl">
-                                <FaChartBar className="w-6 h-6 text-blue-600" />
-                            </div>
-                        </div>
-                        <h3 className="text-2xl font-bold text-gray-900">
-                            {formatCurrency(
-                                reportData.monthlySpending.reduce(
-                                    (sum, item) => sum + item.amount,
-                                    0
-                                )
-                            )}
-                        </h3>
-                        <p className="text-gray-600 text-sm">
-                            Gasto total no período
-                        </p>
+                {isLoading ? (
+                    <div className="flex justify-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
-
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-purple-50 rounded-xl">
-                                <FaChartPie className="w-6 h-6 text-purple-600" />
-                            </div>
-                        </div>
-                        <h3 className="text-2xl font-bold text-gray-900">
-                            {reportData.categoryDistribution.length}
-                        </h3>
-                        <p className="text-gray-600 text-sm">
-                            Categorias ativas
-                        </p>
-                    </div>
-
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-green-50 rounded-xl">
-                                <FaChartLine className="w-6 h-6 text-green-600" />
-                            </div>
-                        </div>
-                        <h3 className="text-2xl font-bold text-gray-900">
-                            {formatCurrency(reportData.annualProjection)}
-                        </h3>
-                        <p className="text-gray-600 text-sm">Projeção anual</p>
-                    </div>
-
-                    <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="p-3 bg-amber-50 rounded-xl">
-                                <FaMoneyBillWave className="w-6 h-6 text-amber-600" />
-                            </div>
-                        </div>
-                        <h3 className="text-2xl font-bold text-gray-900">
-                            {reportData.topSubscriptions.length}
-                        </h3>
-                        <p className="text-gray-600 text-sm">
-                            Principais assinaturas
-                        </p>
-                    </div>
-                </div>
-
-                {/* Gráficos e Tabelas */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    {/* Gráfico de Gastos Mensais */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6">
-                            Gastos Mensais
-                        </h3>
-                        <div className="space-y-4">
-                            {reportData.monthlySpending.map((item, index) => (
-                                <div key={index} className="flex items-center">
-                                    <div className="w-16">
-                                        <span className="text-sm font-medium text-gray-700">
-                                            {item.month}
-                                        </span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-linear-to-r from-blue-500 to-purple-500"
-                                                style={{
-                                                    width: `${
-                                                        (item.amount / 400) *
-                                                        100
-                                                    }%`,
-                                                }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                    <div className="w-24 text-right">
-                                        <span className="font-medium text-gray-900">
-                                            {formatCurrency(item.amount)}
-                                        </span>
+                ) : (
+                    <>
+                        {/* Cards de Resumo */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="p-3 bg-blue-50 rounded-xl">
+                                        <FaChartBar className="w-6 h-6 text-blue-600" />
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                                <h3 className="text-2xl font-bold text-gray-900">
+                                    {formatCurrency(reportData.totalSpent)}
+                                </h3>
+                                <p className="text-gray-600 text-sm">
+                                    Gasto total no período
+                                </p>
+                            </div>
 
-                    {/* Distribuição por Categoria */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6">
-                            Distribuição por Categoria
-                        </h3>
-                        <div className="space-y-4">
-                            {reportData.categoryDistribution.map(
-                                (category, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center"
-                                    >
-                                        <div className="w-32">
-                                            <span className="text-sm font-medium text-gray-700">
-                                                {category.name}
-                                            </span>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="p-3 bg-purple-50 rounded-xl">
+                                        <FaChartPie className="w-6 h-6 text-purple-600" />
+                                    </div>
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900">
+                                    {reportData.categoriesCount}
+                                </h3>
+                                <p className="text-gray-600 text-sm">
+                                    Categorias ativas
+                                </p>
+                            </div>
+
+                            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="p-3 bg-green-50 rounded-xl">
+                                        <FaChartLine className="w-6 h-6 text-green-600" />
+                                    </div>
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900">
+                                    {formatCurrency(
+                                        reportData.annualProjection,
+                                    )}
+                                </h3>
+                                <p className="text-gray-600 text-sm">
+                                    Projeção anual
+                                </p>
+                            </div>
+
+                            <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="p-3 bg-amber-50 rounded-xl">
+                                        <FaMoneyBillWave className="w-6 h-6 text-amber-600" />
+                                    </div>
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900">
+                                    {reportData.topSubscriptions.length}
+                                </h3>
+                                <p className="text-gray-600 text-sm">
+                                    Principais assinaturas
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Gráficos e Tabelas */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                            {/* Gráfico de Gastos Mensais */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-6">
+                                    Gastos Mensais (Últimos 12 meses)
+                                </h3>
+                                {reportData.monthlySpending.length === 0 ? (
+                                    <p className="text-gray-600 text-center py-8">
+                                        Nenhum dado de gastos disponível para o
+                                        período selecionado.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {reportData.monthlySpending.map(
+                                            (item, index) => (
                                                 <div
-                                                    className="h-full"
-                                                    style={{
-                                                        width: `${category.value}%`,
-                                                        backgroundColor:
-                                                            index === 0
-                                                                ? "#8B5CF6"
-                                                                : index === 1
-                                                                ? "#3B82F6"
-                                                                : index === 2
-                                                                ? "#10B981"
-                                                                : index === 3
-                                                                ? "#6B7280"
-                                                                : "#EC4899",
-                                                    }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                        <div className="w-24 text-right">
-                                            <span className="font-medium text-gray-900">
-                                                {formatCurrency(
-                                                    category.amount
-                                                )}
-                                            </span>
-                                        </div>
+                                                    key={index}
+                                                    className="flex items-center"
+                                                >
+                                                    <div className="w-16">
+                                                        <span className="text-sm font-medium text-gray-700">
+                                                            {item.month}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-linear-to-r from-blue-500 to-purple-500"
+                                                                style={{
+                                                                    width: `${(item.amount / maxMonthlyAmount) * 100}%`,
+                                                                }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-24 text-right">
+                                                        <span className="font-medium text-gray-900">
+                                                            {formatCurrency(
+                                                                item.amount,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ),
+                                        )}
                                     </div>
-                                )
+                                )}
+                            </div>
+
+                            {/* Distribuição por Categoria */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-6">
+                                    Distribuição por Categoria
+                                </h3>
+                                {reportData.categoryDistribution.length ===
+                                0 ? (
+                                    <p className="text-gray-600 text-center py-8">
+                                        Nenhuma categoria com assinaturas
+                                        ativas.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {reportData.categoryDistribution.map(
+                                            (category, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="flex items-center"
+                                                >
+                                                    <div className="w-32">
+                                                        <span className="text-sm font-medium text-gray-700 truncate">
+                                                            {category.name}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full"
+                                                                style={{
+                                                                    width: `${category.value}%`,
+                                                                    backgroundColor:
+                                                                        index ===
+                                                                        0
+                                                                            ? "#8B5CF6"
+                                                                            : index ===
+                                                                                1
+                                                                              ? "#3B82F6"
+                                                                              : index ===
+                                                                                  2
+                                                                                ? "#10B981"
+                                                                                : index ===
+                                                                                    3
+                                                                                  ? "#6B7280"
+                                                                                  : "#EC4899",
+                                                                }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-24 text-right">
+                                                        <span className="font-medium text-gray-900">
+                                                            {formatCurrency(
+                                                                category.amount,
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Tabela de Principais Assinaturas */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                            <div className="p-6 border-b border-gray-100">
+                                <h3 className="text-lg font-bold text-gray-900">
+                                    Principais Assinaturas
+                                </h3>
+                            </div>
+                            {reportData.topSubscriptions.length === 0 ? (
+                                <div className="p-12 text-center">
+                                    <p className="text-gray-600">
+                                        Nenhuma assinatura ativa encontrada.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
+                                                    Serviço
+                                                </th>
+                                                <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
+                                                    Valor Mensal
+                                                </th>
+                                                <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
+                                                    Ciclo
+                                                </th>
+                                                <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
+                                                    Impacto Anual
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {reportData.topSubscriptions.map(
+                                                (subscription, index) => (
+                                                    <tr
+                                                        key={index}
+                                                        className="hover:bg-gray-50 transition-colors"
+                                                    >
+                                                        <td className="py-4 px-6">
+                                                            <div className="font-medium text-gray-900">
+                                                                {
+                                                                    subscription.name
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4 px-6">
+                                                            <span className="font-bold text-gray-900">
+                                                                {formatCurrency(
+                                                                    subscription.amount,
+                                                                )}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-4 px-6">
+                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                                Mensal
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-4 px-6">
+                                                            <span className="text-gray-900">
+                                                                {formatCurrency(
+                                                                    subscription.amount *
+                                                                        12,
+                                                                )}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ),
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             )}
                         </div>
-                    </div>
-                </div>
 
-                {/* Tabela de Principais Assinaturas */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-                    <div className="p-6 border-b border-gray-100">
-                        <h3 className="text-lg font-bold text-gray-900">
-                            Principais Assinaturas
-                        </h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                                        Serviço
-                                    </th>
-                                    <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                                        Valor Mensal
-                                    </th>
-                                    <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                                        Tendência
-                                    </th>
-                                    <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
-                                        Impacto Total
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {reportData.topSubscriptions.map(
-                                    (subscription, index) => (
-                                        <tr
-                                            key={index}
-                                            className="hover:bg-gray-50 transition-colors"
-                                        >
-                                            <td className="py-4 px-6">
-                                                <div className="font-medium text-gray-900">
-                                                    {subscription.name}
+                        {/* Tendência de Gastos */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-6">
+                                Tendência de Gastos (Últimos 6 meses)
+                            </h3>
+                            {reportData.spendingTrend.length === 0 ? (
+                                <p className="text-gray-600 text-center py-8">
+                                    Nenhum dado de tendência disponível.
+                                </p>
+                            ) : (
+                                <div className="space-y-6">
+                                    {reportData.spendingTrend.map(
+                                        (item, index) => (
+                                            <div
+                                                key={index}
+                                                className="flex items-center"
+                                            >
+                                                <div className="w-16">
+                                                    <span className="text-sm font-medium text-gray-700">
+                                                        {item.month}
+                                                    </span>
                                                 </div>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <span className="font-bold text-gray-900">
-                                                    {formatCurrency(
-                                                        subscription.amount
-                                                    )}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <span
-                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                        subscription.trend ===
-                                                        "up"
-                                                            ? "bg-red-100 text-red-800"
-                                                            : subscription.trend ===
-                                                              "down"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : "bg-gray-100 text-gray-800"
-                                                    }`}
-                                                >
-                                                    {subscription.trend === "up"
-                                                        ? "↑ Aumentando"
-                                                        : subscription.trend ===
-                                                          "down"
-                                                        ? "↓ Diminuindo"
-                                                        : "→ Estável"}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-6">
-                                                <span className="text-gray-900">
-                                                    {formatCurrency(
-                                                        subscription.amount * 12
-                                                    )}
-                                                </span>
-                                                <span className="text-xs text-gray-500 ml-1">
-                                                    /ano
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    )
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Tendência de Gastos */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6">
-                        Tendência de Gastos vs Média
-                    </h3>
-                    <div className="space-y-6">
-                        {reportData.spendingTrend.map((item, index) => (
-                            <div key={index} className="flex items-center">
-                                <div className="w-16">
-                                    <span className="text-sm font-medium text-gray-700">
-                                        {item.month}
-                                    </span>
+                                                <div className="flex-1 relative h-8">
+                                                    <div className="absolute inset-y-0 left-0 flex items-center w-full">
+                                                        <div
+                                                            className="h-2 bg-blue-200 rounded-full absolute"
+                                                            style={{
+                                                                width: `${(item.average / maxTrendAmount) * 100}%`,
+                                                            }}
+                                                        ></div>
+                                                        <div
+                                                            className="h-2 bg-linear-to-r from-blue-500 to-purple-500 rounded-full absolute"
+                                                            style={{
+                                                                width: `${(item.actual / maxTrendAmount) * 100}%`,
+                                                            }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                                <div className="w-48 text-right">
+                                                    <div className="flex justify-end space-x-4">
+                                                        <div>
+                                                            <span className="text-sm text-gray-600">
+                                                                Real:
+                                                            </span>
+                                                            <span className="ml-2 font-medium text-gray-900">
+                                                                {formatCurrency(
+                                                                    item.actual,
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-sm text-gray-600">
+                                                                Proj.:
+                                                            </span>
+                                                            <span className="ml-2 font-medium text-gray-900">
+                                                                {formatCurrency(
+                                                                    item.average,
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ),
+                                    )}
                                 </div>
-                                <div className="flex-1 relative h-8">
-                                    <div className="absolute inset-y-0 left-0 flex items-center w-full">
-                                        <div
-                                            className="h-2 bg-blue-200 rounded-full absolute"
-                                            style={{
-                                                width: `${
-                                                    (item.average / 400) * 100
-                                                }%`,
-                                            }}
-                                        ></div>
-                                        <div
-                                            className="h-2 bg-linear-to-r from-blue-500 to-purple-500 rounded-full absolute"
-                                            style={{
-                                                width: `${
-                                                    (item.actual / 400) * 100
-                                                }%`,
-                                            }}
-                                        ></div>
-                                    </div>
-                                </div>
-                                <div className="w-48 text-right">
-                                    <div className="flex justify-end space-x-4">
-                                        <div>
-                                            <span className="text-sm text-gray-600">
-                                                Atual:
-                                            </span>
-                                            <span className="ml-2 font-medium text-gray-900">
-                                                {formatCurrency(item.actual)}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span className="text-sm text-gray-600">
-                                                Média:
-                                            </span>
-                                            <span className="ml-2 font-medium text-gray-900">
-                                                {formatCurrency(item.average)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
         </Layout>
     );

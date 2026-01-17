@@ -7,15 +7,10 @@ import {
     FaCalendarAlt,
     FaFilter,
     FaChartLine,
-    FaMoneyBillWave,
     FaCreditCard,
     FaSyncAlt,
     FaArrowUp,
-    FaEllipsisH,
     FaSearch,
-    FaUser,
-    FaCog,
-    FaSignOutAlt,
 } from "react-icons/fa";
 import { MdAttachMoney, MdTrendingUp } from "react-icons/md";
 import api from "../config/api.js";
@@ -39,10 +34,12 @@ const Dashboard = () => {
         end: "",
     });
     const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+    const [categories, setCategories] = useState([]);
 
     useEffect(() => {
         fetchDashboardData();
         fetchAlerts();
+        fetchCategories();
     }, [timeRange, dateRange]);
 
     const fetchDashboardData = async () => {
@@ -61,19 +58,19 @@ const Dashboard = () => {
 
             // Chamada para o resumo do dashboard
             const summaryResponse = await api.get(
-                `/dashboard/summary?${summaryParams.toString()}`
+                `/dashboard/summary?${summaryParams.toString()}`,
             );
             setSummaryData(
                 summaryResponse.data || {
                     total_monthly: 0,
                     actives: 0,
                     avg_amount: 0,
-                }
+                },
             );
 
             // Chamada para listar assinaturas ativas
             const subscriptionsResponse = await api.get(
-                "/subscriptions?status=active"
+                "/subscriptions?status=active",
             );
             setSubscriptions(subscriptionsResponse.data || []);
 
@@ -81,23 +78,29 @@ const Dashboard = () => {
             const upcomingParams = new URLSearchParams();
             upcomingParams.append(
                 "initial_period",
-                new Date().toISOString().split("T")[0]
+                new Date().toISOString().split("T")[0],
             );
             const nextWeek = new Date();
             nextWeek.setDate(nextWeek.getDate() + 7);
             upcomingParams.append(
                 "final_period",
-                nextWeek.toISOString().split("T")[0]
+                nextWeek.toISOString().split("T")[0],
             );
 
             const upcomingResponse = await api.get(
-                `/dashboard/upcoming?${upcomingParams.toString()}`
+                `/dashboard/upcoming?${upcomingParams.toString()}`,
             );
             setUpcomingCharges(upcomingResponse.data || []);
         } catch (error) {
             console.error("Erro ao carregar dados do dashboard:", error);
-            // Usar dados mockados em caso de erro (para desenvolvimento)
-            setMockData();
+            // Em caso de erro, manter os dados como estão (vazios ou anteriores)
+            setSummaryData({
+                total_monthly: 0,
+                actives: 0,
+                avg_amount: 0,
+            });
+            setSubscriptions([]);
+            setUpcomingCharges([]);
         } finally {
             setIsLoading(false);
         }
@@ -110,11 +113,22 @@ const Dashboard = () => {
 
             // Contar alertas não lidos
             const unreadCount = (alertsResponse.data || []).filter(
-                (alert) => !alert.is_read
+                (alert) => !alert.is_read,
             ).length;
             setUnreadAlertsCount(unreadCount);
         } catch (error) {
             console.error("Erro ao carregar alertas:", error);
+            setAlerts([]);
+        }
+    };
+
+    const fetchCategories = async () => {
+        try {
+            const response = await api.get("/categories");
+            setCategories(response.data || []);
+        } catch (error) {
+            console.error("Erro ao carregar categorias:", error);
+            setCategories([]);
         }
     };
 
@@ -126,103 +140,6 @@ const Dashboard = () => {
         } catch (error) {
             console.error("Erro ao marcar alerta como lido:", error);
         }
-    };
-
-    // Dados mockados para fallback ou desenvolvimento
-    const setMockData = () => {
-        setSummaryData({
-            total_monthly: 289.9,
-            actives: 8,
-            avg_amount: 36.24,
-        });
-
-        setSubscriptions([
-            {
-                id: "750e8400-e29b-41d4-a716-446655440001",
-                user_id: "550e8400-e29b-41d4-a716-446655440000",
-                category_id: "650e8400-e29b-41d4-a716-446655440001",
-                service_name: "Netflix",
-                amount: 34.9,
-                billing_cycle: "monthly",
-                next_billing_date: "2024-01-15",
-                status: "active",
-                created_at: "2024-01-15T10:30:00.000Z",
-            },
-            {
-                id: "750e8400-e29b-41d4-a716-446655440002",
-                user_id: "550e8400-e29b-41d4-a716-446655440000",
-                category_id: "650e8400-e29b-41d4-a716-446655440002",
-                service_name: "Spotify",
-                amount: 19.9,
-                billing_cycle: "monthly",
-                next_billing_date: "2024-01-18",
-                status: "active",
-                created_at: "2024-01-15T10:30:00.000Z",
-            },
-            {
-                id: "750e8400-e29b-41d4-a716-446655440003",
-                user_id: "550e8400-e29b-41d4-a716-446655440000",
-                category_id: "650e8400-e29b-41d4-a716-446655440001",
-                service_name: "Amazon Prime",
-                amount: 14.9,
-                billing_cycle: "monthly",
-                next_billing_date: "2024-01-20",
-                status: "active",
-                created_at: "2024-01-15T10:30:00.000Z",
-            },
-            {
-                id: "750e8400-e29b-41d4-a716-446655440004",
-                user_id: "550e8400-e29b-41d4-a716-446655440000",
-                category_id: "650e8400-e29b-41d4-a716-446655440003",
-                service_name: "iCloud",
-                amount: 9.9,
-                billing_cycle: "monthly",
-                next_billing_date: "2024-01-25",
-                status: "active",
-                created_at: "2024-01-15T10:30:00.000Z",
-            },
-            {
-                id: "750e8400-e29b-41d4-a716-446655440005",
-                user_id: "550e8400-e29b-41d4-a716-446655440000",
-                category_id: "650e8400-e29b-41d4-a716-446655440004",
-                service_name: "Adobe Creative Cloud",
-                amount: 79.9,
-                billing_cycle: "monthly",
-                next_billing_date: "2024-02-01",
-                status: "active",
-                created_at: "2024-01-15T10:30:00.000Z",
-            },
-            {
-                id: "750e8400-e29b-41d4-a716-446655440006",
-                user_id: "550e8400-e29b-41d4-a716-446655440000",
-                category_id: "650e8400-e29b-41d4-a716-446655440004",
-                service_name: "Microsoft 365",
-                amount: 39.9,
-                billing_cycle: "yearly",
-                next_billing_date: "2024-07-15",
-                status: "active",
-                created_at: "2024-01-15T10:30:00.000Z",
-            },
-        ]);
-
-        setUpcomingCharges([
-            {
-                id: "850e8400-e29b-41d4-a716-446655440001",
-                subscription_id: "750e8400-e29b-41d4-a716-446655440001",
-                charge_date: "2024-01-15",
-                amount: 34.9,
-                status: "pending",
-                created_at: "2024-01-15T10:30:00.000Z",
-            },
-            {
-                id: "850e8400-e29b-41d4-a716-446655440002",
-                subscription_id: "750e8400-e29b-41d4-a716-446655440002",
-                charge_date: "2024-01-18",
-                amount: 19.9,
-                status: "pending",
-                created_at: "2024-01-15T10:30:00.000Z",
-            },
-        ]);
     };
 
     const formatCurrency = (value) => {
@@ -241,16 +158,27 @@ const Dashboard = () => {
     };
 
     const getSubscriptionColor = (subscription) => {
-        // Mapeia IDs de categoria para cores (você pode personalizar isso)
-        // Na prática, você precisaria buscar as cores das categorias
-        const colorMap = {
-            "650e8400-e29b-41d4-a716-446655440001": "bg-red-100", // Entretenimento
-            "650e8400-e29b-41d4-a716-446655440002": "bg-green-100", // Música
-            "650e8400-e29b-41d4-a716-446655440003": "bg-gray-100", // Armazenamento
-            "650e8400-e29b-41d4-a716-446655440004": "bg-blue-100", // Trabalho
-            default: "bg-purple-100",
-        };
-        return colorMap[subscription.category_id] || colorMap.default;
+        // Buscar a cor da categoria
+        const category = categories.find(
+            (cat) => cat.id === subscription.category_id,
+        );
+        if (category && category.color) {
+            // Converter cor hexadecimal para classe Tailwind
+            const colorMap = {
+                "#3B82F6": "bg-blue-100", // blue-500
+                "#10B981": "bg-green-100", // green-500
+                "#EF4444": "bg-red-100", // red-500
+                "#F59E0B": "bg-amber-100", // amber-500
+                "#8B5CF6": "bg-purple-100", // violet-500
+                "#EC4899": "bg-pink-100", // pink-500
+                "#6366F1": "bg-indigo-100", // indigo-500
+                "#14B8A6": "bg-teal-100", // teal-500
+                "#F97316": "bg-orange-100", // orange-500
+                "#6B7280": "bg-gray-100", // gray-500
+            };
+            return colorMap[category.color] || "bg-purple-100";
+        }
+        return "bg-purple-100";
     };
 
     const getSubscriptionIcon = (subscription) => {
@@ -259,37 +187,10 @@ const Dashboard = () => {
     };
 
     const getCategoryName = (subscription) => {
-        // Na prática, você precisaria buscar os nomes das categorias
-        const categoryMap = {
-            "650e8400-e29b-41d4-a716-446655440001": "Entretenimento",
-            "650e8400-e29b-41d4-a716-446655440002": "Música",
-            "650e8400-e29b-41d4-a716-446655440003": "Armazenamento",
-            "650e8400-e29b-41d4-a716-446655440004": "Trabalho",
-            default: "Outros",
-        };
-        return categoryMap[subscription.category_id] || categoryMap.default;
-    };
-
-    const getUpcomingSubscriptions = () => {
-        // Retorna assinaturas com próxima cobrança nos próximos 30 dias
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
-        return subscriptions
-            .filter((sub) => {
-                if (!sub.next_billing_date) return false;
-                const billingDate = new Date(sub.next_billing_date);
-                return (
-                    billingDate >= new Date() &&
-                    billingDate <= thirtyDaysFromNow
-                );
-            })
-            .sort(
-                (a, b) =>
-                    new Date(a.next_billing_date) -
-                    new Date(b.next_billing_date)
-            )
-            .slice(0, 4);
+        const category = categories.find(
+            (cat) => cat.id === subscription.category_id,
+        );
+        return category ? category.name : "Sem categoria";
     };
 
     const handleAddCharge = async (subscriptionId) => {
@@ -297,11 +198,12 @@ const Dashboard = () => {
             await api.post(`/subscriptions/${subscriptionId}/charges`);
             // Recarregar os dados
             fetchDashboardData();
+            alert("Cobrança registrada com sucesso!");
         } catch (error) {
             console.error("Erro ao adicionar cobrança:", error);
             alert(
                 "Erro ao adicionar cobrança: " +
-                    (error.response?.data?.message || error.message)
+                    (error.response?.data?.message || error.message),
             );
         }
     };
@@ -311,11 +213,12 @@ const Dashboard = () => {
             await api.patch(`/charges/${chargeId}/pay`);
             // Recarregar os dados
             fetchDashboardData();
+            alert("Cobrança paga com sucesso!");
         } catch (error) {
             console.error("Erro ao pagar cobrança:", error);
             alert(
                 "Erro ao pagar cobrança: " +
-                    (error.response?.data?.message || error.message)
+                    (error.response?.data?.message || error.message),
             );
         }
     };
@@ -328,11 +231,12 @@ const Dashboard = () => {
                 await api.patch(`/subscriptions/${subscriptionId}/cancel`);
                 // Recarregar os dados
                 fetchDashboardData();
+                alert("Assinatura cancelada com sucesso!");
             } catch (error) {
                 console.error("Erro ao cancelar assinatura:", error);
                 alert(
                     "Erro ao cancelar assinatura: " +
-                        (error.response?.data?.message || error.message)
+                        (error.response?.data?.message || error.message),
                 );
             }
         }
@@ -358,7 +262,7 @@ const Dashboard = () => {
         // Calcular total geral
         const grandTotal = Object.values(categoryTotals).reduce(
             (sum, cat) => sum + cat.total,
-            0
+            0,
         );
 
         // Converter para array e calcular porcentagens
@@ -400,8 +304,8 @@ const Dashboard = () => {
                                     {timeRange === "month"
                                         ? "Este mês"
                                         : timeRange === "year"
-                                        ? "Este ano"
-                                        : "Personalizado"}
+                                          ? "Este ano"
+                                          : "Personalizado"}
                                 </span>
                             </button>
 
@@ -491,7 +395,7 @@ const Dashboard = () => {
                                 </div>
                             )}
                         </div>
-                        
+
                         <Link
                             to="/subscriptions/new"
                             className="flex items-center space-x-2 px-4 py-2 bg-linear-to-r from-blue-600 to-purple-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
@@ -638,7 +542,9 @@ const Dashboard = () => {
                                                     <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
                                                         Status
                                                     </th>
-                                                    <th className="py-4 px-6 text-left text-sm font-medium text-gray-700"></th>
+                                                    <th className="py-4 px-6 text-left text-sm font-medium text-gray-700">
+                                                        Ações
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
@@ -654,12 +560,12 @@ const Dashboard = () => {
                                                                 <div className="flex items-center">
                                                                     <div
                                                                         className={`w-10 h-10 rounded-lg ${getSubscriptionColor(
-                                                                            subscription
+                                                                            subscription,
                                                                         )} flex items-center justify-center mr-3`}
                                                                     >
                                                                         <span className="font-bold text-gray-700">
                                                                             {getSubscriptionIcon(
-                                                                                subscription
+                                                                                subscription,
                                                                             )}
                                                                         </span>
                                                                     </div>
@@ -680,7 +586,7 @@ const Dashboard = () => {
                                                             <td className="py-4 px-6">
                                                                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                                                     {getCategoryName(
-                                                                        subscription
+                                                                        subscription,
                                                                     )}
                                                                 </span>
                                                             </td>
@@ -688,8 +594,8 @@ const Dashboard = () => {
                                                                 <div className="font-bold text-gray-900">
                                                                     {formatCurrency(
                                                                         getMonthlyAmount(
-                                                                            subscription
-                                                                        )
+                                                                            subscription,
+                                                                        ),
                                                                     )}
                                                                     <span className="text-xs text-gray-500 font-normal ml-1">
                                                                         /mês
@@ -699,7 +605,7 @@ const Dashboard = () => {
                                                                     "yearly" && (
                                                                     <div className="text-xs text-gray-500">
                                                                         {formatCurrency(
-                                                                            subscription.amount
+                                                                            subscription.amount,
                                                                         )}
                                                                         /ano
                                                                     </div>
@@ -711,9 +617,9 @@ const Dashboard = () => {
                                                                     <span className="text-gray-700">
                                                                         {subscription.next_billing_date
                                                                             ? new Date(
-                                                                                  subscription.next_billing_date
+                                                                                  subscription.next_billing_date,
                                                                               ).toLocaleDateString(
-                                                                                  "pt-BR"
+                                                                                  "pt-BR",
                                                                               )
                                                                             : "Não definida"}
                                                                     </span>
@@ -739,7 +645,7 @@ const Dashboard = () => {
                                                                     <button
                                                                         onClick={() =>
                                                                             handleAddCharge(
-                                                                                subscription.id
+                                                                                subscription.id,
                                                                             )
                                                                         }
                                                                         className="text-blue-600 hover:text-blue-800 text-sm"
@@ -750,7 +656,7 @@ const Dashboard = () => {
                                                                     <button
                                                                         onClick={() =>
                                                                             handleCancelSubscription(
-                                                                                subscription.id
+                                                                                subscription.id,
                                                                             )
                                                                         }
                                                                         className="text-red-600 hover:text-red-800 text-sm"
@@ -761,7 +667,7 @@ const Dashboard = () => {
                                                                 </div>
                                                             </td>
                                                         </tr>
-                                                    )
+                                                    ),
                                                 )}
                                             </tbody>
                                         </table>
@@ -816,7 +722,7 @@ const Dashboard = () => {
                                             <div className="w-24 text-right">
                                                 <span className="font-medium text-gray-900">
                                                     {formatCurrency(
-                                                        category.total_amount
+                                                        category.total_amount,
                                                     )}
                                                 </span>
                                             </div>
@@ -850,7 +756,7 @@ const Dashboard = () => {
                                                     subscriptions.find(
                                                         (sub) =>
                                                             sub.id ===
-                                                            charge.subscription_id
+                                                            charge.subscription_id,
                                                     );
                                                 return (
                                                     <div
@@ -862,7 +768,7 @@ const Dashboard = () => {
                                                                 className={`w-10 h-10 rounded-lg ${
                                                                     subscription
                                                                         ? getSubscriptionColor(
-                                                                              subscription
+                                                                              subscription,
                                                                           )
                                                                         : "bg-gray-100"
                                                                 } flex items-center justify-center mr-3`}
@@ -870,7 +776,7 @@ const Dashboard = () => {
                                                                 <span className="font-bold">
                                                                     {subscription
                                                                         ? getSubscriptionIcon(
-                                                                              subscription
+                                                                              subscription,
                                                                           )
                                                                         : "?"}
                                                                 </span>
@@ -883,9 +789,9 @@ const Dashboard = () => {
                                                                 </div>
                                                                 <div className="text-sm text-gray-500">
                                                                     {new Date(
-                                                                        charge.charge_date
+                                                                        charge.charge_date,
                                                                     ).toLocaleDateString(
-                                                                        "pt-BR"
+                                                                        "pt-BR",
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -893,7 +799,7 @@ const Dashboard = () => {
                                                         <div className="flex items-center space-x-2">
                                                             <span className="font-bold">
                                                                 {formatCurrency(
-                                                                    charge.amount
+                                                                    charge.amount,
                                                                 )}
                                                             </span>
                                                             {charge.status ===
@@ -901,7 +807,7 @@ const Dashboard = () => {
                                                                 <button
                                                                     onClick={() =>
                                                                         handlePayCharge(
-                                                                            charge.id
+                                                                            charge.id,
                                                                         )
                                                                     }
                                                                     className="text-green-600 hover:text-green-800 text-sm font-medium"
@@ -945,7 +851,7 @@ const Dashboard = () => {
                                     </span>
                                     <span className="font-medium text-gray-900">
                                         {formatCurrency(
-                                            summaryData.total_monthly
+                                            summaryData.total_monthly,
                                         )}
                                     </span>
                                 </div>
@@ -1002,9 +908,9 @@ const Dashboard = () => {
                                                 </div>
                                                 <div className="text-sm text-gray-500">
                                                     {new Date(
-                                                        alert.created_at
+                                                        alert.created_at,
                                                     ).toLocaleDateString(
-                                                        "pt-BR"
+                                                        "pt-BR",
                                                     )}
                                                 </div>
                                             </div>
@@ -1012,7 +918,7 @@ const Dashboard = () => {
                                                 <button
                                                     onClick={() =>
                                                         markAlertAsRead(
-                                                            alert.id
+                                                            alert.id,
                                                         )
                                                     }
                                                     className="ml-2 text-blue-600 hover:text-blue-800 text-sm font-medium"
