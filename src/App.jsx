@@ -22,7 +22,7 @@ const App = () => {
     // Componente de rota para visitantes
     const GuestRoute = ({ children }) => {
         const token = localStorage.getItem("authToken");
-        return token ? <Navigate to="/home" replace /> : children;
+        return token ? <Navigate to="/dashboard" replace /> : children;
     };
 
     return (
@@ -32,13 +32,9 @@ const App = () => {
                     exact
                     path="/"
                     element={
-                        localStorage.getItem("authToken") ? (
-                            <Navigate to="/dashboard" replace />
-                        ) : (
-                            <GuestRoute>
-                                <LandingPage />
-                            </GuestRoute>
-                        )
+                        <GuestRoute>
+                            <LandingPage />
+                        </GuestRoute>
                     }
                 />
 
@@ -150,7 +146,7 @@ const App = () => {
                     }
                 />
 
-                <Route 
+                <Route
                     path="/alerts"
                     element={
                         <ProtectedRoute>
