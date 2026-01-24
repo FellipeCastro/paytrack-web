@@ -77,7 +77,6 @@ const Login = () => {
 
             const result = response.data;
             localStorage.setItem("authToken", result.token);
-            localStorage.setItem("user", JSON.stringify(result.user));
 
             if (rememberMe) {
                 localStorage.setItem("rememberedEmail", credentials.email);

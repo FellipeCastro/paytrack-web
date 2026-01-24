@@ -100,7 +100,6 @@ const Register = () => {
 
             const result = response.data;
             localStorage.setItem("authToken", result.token);
-            localStorage.setItem("user", JSON.stringify(result.user));
 
             setSuccess(true);
 
@@ -425,7 +424,7 @@ const Register = () => {
                                         type="button"
                                         onClick={() =>
                                             setShowConfirmPassword(
-                                                !showConfirmPassword
+                                                !showConfirmPassword,
                                             )
                                         }
                                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
